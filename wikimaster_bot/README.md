@@ -1,7 +1,7 @@
 # WikiMasters Pack Bot
 
-Mini-app pour automatiser l'ouverture de paquets sur wiki-masters.com, avec un
-dashboard local (Flask) pour regler le comportement.
+Application desktop (PySide6) pour automatiser l'ouverture de paquets sur
+wiki-masters.com, avec une fenetre pour regler le comportement.
 
 ## Avant tout : lis ca
 
@@ -24,60 +24,44 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-## Etape 1 : recuperer les vrais selecteurs
-
-Le plus simple est d'utiliser l'outil d'inspection de Playwright :
+## Lancer l'application
 
 ```bash
-playwright codegen https://www.wiki-masters.com
+python -m wikimaster_bot.gui
 ```
 
-Ces selecteurs sont deja renseignes dans `selectors.py` (bouton "Ouvrir un
-paquet", compteur de stock, bouton "suivant" du reveal de cartes). Si le site
-change son HTML, refais un tour d'inspection et mets a jour ce fichier -- il
-n'y a rien d'autre a modifier ailleurs.
+Une fenetre s'ouvre avec :
 
-Le statut premium n'est pas lu sur la page : c'est une simple case a cocher
-dans le dashboard (elle change juste l'intervalle de drop attendu, 3 min au
-lieu de 10). Le contenu des cartes obtenues n'est pas lu non plus : le bot
-clique sur "Ouvrir" puis sur "suivant" jusqu'a revenir a l'ecran principal,
-sans se soucier du resultat.
+- **Se connecter** — ouvre un vrai navigateur pour te connecter manuellement au
+  compte de test. Une fois connecte, clique OK dans la boite de dialogue : la
+  session (cookies) est sauvegardee dans `data/auth_state.json` (ignore par git).
+  Le bot n'a jamais besoin de connaitre ton mot de passe. A refaire seulement si
+  la session expire.
+- **Reglages** :
+  - **Premium** : bascule l'intervalle de drop attendu entre 10 min (free) et 3 min (premium)
+  - **Stock maximum** : plafond de paquets non ouverts (10 par defaut)
+  - **Strategie d'ouverture** :
+    - `immediate` — ouvre chaque paquet des qu'il devient disponible
+    - `batch_at_cap` — attend que le stock soit plein puis ouvre tout d'un coup
+    - `interval` — ouvre a un rythme personnalise, independant du timer du site
+    - `manual` — le bot ne fait qu'observer, aucune ouverture automatique
+  - **Headless** : navigateur visible ou invisible pendant l'execution du bot
+    (la connexion manuelle, elle, ouvre toujours une fenetre visible)
+- **Demarrer / Arreter** — lance ou coupe la boucle de fond
+- **Activite** — nombre de paquets ouverts et logs en direct
 
-## Etape 2 : connexion (une seule fois)
-
-```bash
-python -m wikimaster_bot.browser
-```
-
-Une fenetre de navigateur s'ouvre, connecte-toi manuellement au compte de test,
-puis reviens dans le terminal et appuie sur Entree. La session (cookies) est
-sauvegardee dans `data/auth_state.json` (fichier ignore par git). Le bot n'a
-jamais besoin de connaitre ton mot de passe.
-
-## Etape 3 : lancer le dashboard
-
-```bash
-python -m wikimaster_bot.app
-```
-
-Ouvre http://localhost:5000 pour regler :
-- **Premium** : bascule l'intervalle de drop attendu entre 10 min (free) et 3 min (premium)
-- **Stock maximum** : plafond de paquets non ouvres (10 par defaut)
-- **Strategie d'ouverture** :
-  - `immediate` — ouvre chaque paquet des qu'il devient disponible
-  - `batch_at_cap` — attend que le stock soit plein puis ouvre tout d'un coup
-  - `interval` — ouvre a un rythme personnalise, independant du timer du site
-  - `manual` — le bot ne fait qu'observer, l'ouverture reste manuelle depuis le dashboard
-- **Headless** : navigateur visible ou invisible pendant l'execution du bot
-
-Puis clique sur "Demarrer" pour lancer la boucle de fond.
+Le statut premium n'est pas lu sur la page : c'est une simple case a cocher qui
+change juste l'intervalle de drop attendu. Le contenu des cartes obtenues n'est
+pas lu non plus : le bot clique sur "Ouvrir" puis sur "suivant" jusqu'a revenir
+a l'ecran principal, sans se soucier du resultat.
 
 ## Structure
 
-- `selectors.py` — tous les selecteurs CSS/XPath du site (a completer)
+- `selectors.py` — tous les selecteurs CSS du site (bouton ouvrir, stock, suivant)
 - `config.py` — reglages persistes (JSON dans `data/config.json`)
-- `browser.py` — connexion Playwright et gestion de la session
-- `opener.py` — logique d'ouverture (lecture du stock, clic, lecture du resultat)
+- `browser.py` — constantes de connexion Playwright (URL, chemin de session) et
+  gestion du contexte navigateur utilise par le bot
+- `opener.py` — logique d'ouverture (lecture du stock, clic, passage des cartes)
 - `scheduler.py` — boucle de fond qui applique la strategie choisie au bon rythme
-- `storage.py` — historique des cartes obtenues + logs
-- `app.py` + `templates/index.html` — dashboard local
+- `storage.py` — logs et compteur de paquets ouverts
+- `gui.py` — application desktop PySide6 (point d'entree : `python -m wikimaster_bot.gui`)
