@@ -1,3 +1,4 @@
 data/*.json
 data/*.log
+data/browser_profile/
 !data/.gitkeep

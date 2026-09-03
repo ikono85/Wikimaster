@@ -24,6 +24,15 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
+## Connexion
+
+Le bot utilise un profil de navigateur persistant (`data/browser_profile/`,
+ignore par git) : pas de gestion de login dans l'app. Si le compte n'est pas
+deja connecte dans ce profil, decoche "Navigateur invisible" dans les reglages
+et connecte-toi manuellement une fois dans la fenetre qui s'ouvre au premier
+lancement du bot — les cookies restent ensuite dans le profil pour les fois
+suivantes, exactement comme un navigateur normal.
+
 ## Lancer l'application
 
 ```bash
@@ -32,11 +41,6 @@ python -m wikimaster_bot.gui
 
 Une fenetre s'ouvre avec :
 
-- **Se connecter** — ouvre un vrai navigateur pour te connecter manuellement au
-  compte de test. Une fois connecte, clique OK dans la boite de dialogue : la
-  session (cookies) est sauvegardee dans `data/auth_state.json` (ignore par git).
-  Le bot n'a jamais besoin de connaitre ton mot de passe. A refaire seulement si
-  la session expire.
 - **Reglages** :
   - **Premium** : bascule l'intervalle de drop attendu entre 10 min (free) et 3 min (premium)
   - **Stock maximum** : plafond de paquets non ouverts (10 par defaut)
@@ -46,7 +50,6 @@ Une fenetre s'ouvre avec :
     - `interval` — ouvre a un rythme personnalise, independant du timer du site
     - `manual` — le bot ne fait qu'observer, aucune ouverture automatique
   - **Headless** : navigateur visible ou invisible pendant l'execution du bot
-    (la connexion manuelle, elle, ouvre toujours une fenetre visible)
 - **Demarrer / Arreter** — lance ou coupe la boucle de fond
 - **Activite** — nombre de paquets ouverts et logs en direct
 
@@ -59,8 +62,7 @@ a l'ecran principal, sans se soucier du resultat.
 
 - `selectors.py` — tous les selecteurs CSS du site (bouton ouvrir, stock, suivant)
 - `config.py` — reglages persistes (JSON dans `data/config.json`)
-- `browser.py` — constantes de connexion Playwright (URL, chemin de session) et
-  gestion du contexte navigateur utilise par le bot
+- `browser.py` — lancement du profil de navigateur persistant utilise par le bot
 - `opener.py` — logique d'ouverture (lecture du stock, clic, passage des cartes)
 - `scheduler.py` — boucle de fond qui applique la strategie choisie au bon rythme
 - `storage.py` — logs et compteur de paquets ouverts

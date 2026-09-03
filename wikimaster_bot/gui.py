@@ -4,9 +4,8 @@ Lancement : python -m wikimaster_bot.gui
 """
 
 import sys
-import threading
 
-from PySide6.QtCore import QThread, QTimer, Signal
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -17,49 +16,16 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
-from playwright.sync_api import sync_playwright
 
-from . import browser, storage
+from . import storage
 from .config import STRATEGIES, load_config, save_config
 from .scheduler import scheduler
-
-
-class LoginWorker(QThread):
-    """Ouvre un navigateur pour une connexion manuelle, puis sauvegarde la session
-    une fois que l'utilisateur confirme (voir MainWindow.on_login_clicked)."""
-
-    ready_for_confirmation = Signal()
-    finished_ok = Signal()
-    failed = Signal(str)
-
-    def __init__(self):
-        super().__init__()
-        self._confirm_event = threading.Event()
-
-    def confirm(self) -> None:
-        self._confirm_event.set()
-
-    def run(self) -> None:
-        try:
-            with sync_playwright() as p:
-                browser_instance = p.chromium.launch(headless=False)
-                context = browser_instance.new_context()
-                page = context.new_page()
-                page.goto(browser.BASE_URL)
-                self.ready_for_confirmation.emit()
-                self._confirm_event.wait()
-                context.storage_state(path=str(browser.STATE_PATH))
-                browser_instance.close()
-            self.finished_ok.emit()
-        except Exception as exc:  # noqa: BLE001 - remonte a l'UI
-            self.failed.emit(str(exc))
 
 
 class MainWindow(QMainWindow):
@@ -69,7 +35,6 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(480)
 
         self.cfg = load_config()
-        self._login_worker: LoginWorker | None = None
 
         root = QWidget()
         layout = QVBoxLayout(root)
@@ -100,15 +65,9 @@ class MainWindow(QMainWindow):
         box = QGroupBox("Statut")
         row = QHBoxLayout(box)
 
-        self.session_label = QLabel()
         self.bot_status_label = QLabel()
-        row.addWidget(self.session_label)
         row.addWidget(self.bot_status_label)
         row.addStretch()
-
-        self.login_button = QPushButton("Se connecter")
-        self.login_button.clicked.connect(self.on_login_clicked)
-        row.addWidget(self.login_button)
 
         self.start_button = QPushButton("Demarrer")
         self.start_button.clicked.connect(self.on_start_clicked)
@@ -204,44 +163,9 @@ class MainWindow(QMainWindow):
         save_config(self.cfg)
         scheduler.stop()
 
-    def on_login_clicked(self) -> None:
-        self.login_button.setEnabled(False)
-        self.login_button.setText("Connexion en cours...")
-
-        worker = LoginWorker()
-        self._login_worker = worker
-        worker.ready_for_confirmation.connect(self._on_login_ready)
-        worker.finished_ok.connect(self._on_login_finished)
-        worker.failed.connect(self._on_login_failed)
-        worker.start()
-
-    def _on_login_ready(self) -> None:
-        QMessageBox.information(
-            self,
-            "Connexion",
-            "Connecte-toi manuellement dans la fenetre du navigateur qui vient "
-            "de s'ouvrir, puis clique sur OK pour sauvegarder la session.",
-        )
-        if self._login_worker is not None:
-            self._login_worker.confirm()
-
-    def _on_login_finished(self) -> None:
-        storage.append_log("Session de connexion sauvegardee.")
-        self.login_button.setEnabled(True)
-        self.login_button.setText("Se connecter")
-        self.refresh_status()
-
-    def _on_login_failed(self, message: str) -> None:
-        QMessageBox.critical(self, "Erreur de connexion", message)
-        self.login_button.setEnabled(True)
-        self.login_button.setText("Se connecter")
-
     # -- rafraichissement --------------------------------------------------------
 
     def refresh_status(self) -> None:
-        self.session_label.setText(
-            "Session : connectee" if browser.has_saved_session() else "Session : non connectee"
-        )
         running = scheduler.running
         self.bot_status_label.setText("Bot : en cours" if running else "Bot : arrete")
         self.start_button.setEnabled(not running)
