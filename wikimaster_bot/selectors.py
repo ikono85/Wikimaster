@@ -15,11 +15,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Selectors:
-    # Formulaire de connexion
-    login_username_input: str = "#login-username"
-    login_password_input: str = "#login-password"
-    login_submit_button: str = "#login-submit"
-
     # Page / widget d'ouverture de paquets
     # Le bouton n'a pas d'id/data-testid stable : on le cible via l'image qu'il contient,
     # dont l'attribut alt est fiable ("Ouvrir un paquet").
@@ -28,11 +23,9 @@ class Selectors:
     # extrait le nombre courant par regex plutot que de cibler un span precis (classes
     # Tailwind dynamiques type text-[var(--color-accent)], fragiles a matcher en CSS).
     pack_stock_count: str = ".card-frame"
-    pack_open_result_card: str = "[data-testid='pack-result-card']"  # TODO: a fournir
-    pack_next_drop_timer: str = "[data-testid='next-drop-timer']"  # TODO: a fournir
-
-    # Statut premium du compte
-    premium_badge: str = "[data-testid='premium-badge']"  # TODO: a fournir
+    # Bouton "suivant" affiche pendant le reveal des cartes (icone chevron-droit,
+    # pas de texte/id : on cible via le path SVG de l'icone, seul element stable).
+    pack_skip_button: str = 'button:has(svg polyline[points="9 18 15 12 9 6"])'
 
 
 SELECTORS = Selectors()

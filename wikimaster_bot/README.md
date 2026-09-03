@@ -11,10 +11,9 @@ dashboard local (Flask) pour regler le comportement.
   (frequence trop reguliere, absence d'activite humaine ailleurs, etc.). Ce projet
   ne met en place aucune mesure de contournement de detection anti-bot : c'est de
   l'automatisation simple, pas de l'evasion.
-- Les selecteurs CSS dans `selectors.py` sont des **placeholders**. Ils doivent etre
-  remplaces par les vrais elements du DOM avant que le bot puisse fonctionner. Sans
-  ca, `PackOpener` ne trouvera rien et ne fera rien (echec silencieux cote selecteur,
-  visible dans les logs du dashboard).
+- Les selecteurs CSS dans `selectors.py` (bouton "Ouvrir", compteur de stock, bouton
+  "suivant") ont ete releves sur le site reel. Si le site change son HTML, c'est le
+  seul fichier a mettre a jour.
 
 ## Installation
 
@@ -33,14 +32,16 @@ Le plus simple est d'utiliser l'outil d'inspection de Playwright :
 playwright codegen https://www.wiki-masters.com
 ```
 
-Connecte-toi, va sur la page d'ouverture de paquets, et regarde le code genere /
-utilise l'inspecteur pour identifier :
-- le bouton "Ouvrir un paquet"
-- l'element qui affiche le stock actuel de paquets
-- l'element affichant le resultat (carte obtenue)
-- l'indicateur de statut premium
+Ces selecteurs sont deja renseignes dans `selectors.py` (bouton "Ouvrir un
+paquet", compteur de stock, bouton "suivant" du reveal de cartes). Si le site
+change son HTML, refais un tour d'inspection et mets a jour ce fichier -- il
+n'y a rien d'autre a modifier ailleurs.
 
-Reporte ces selecteurs dans `selectors.py`.
+Le statut premium n'est pas lu sur la page : c'est une simple case a cocher
+dans le dashboard (elle change juste l'intervalle de drop attendu, 3 min au
+lieu de 10). Le contenu des cartes obtenues n'est pas lu non plus : le bot
+clique sur "Ouvrir" puis sur "suivant" jusqu'a revenir a l'ecran principal,
+sans se soucier du resultat.
 
 ## Etape 2 : connexion (une seule fois)
 

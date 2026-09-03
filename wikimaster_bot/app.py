@@ -18,7 +18,7 @@ def index():
         strategies=STRATEGIES,
         running=scheduler.running,
         has_session=browser.has_saved_session(),
-        history=storage.get_history(limit=25),
+        packs_opened=storage.count_packs_opened(),
         logs=storage.get_recent_logs(limit=40),
     )
 
@@ -57,7 +57,7 @@ def stop_bot():
 def api_status():
     return jsonify({
         "running": scheduler.running,
-        "history": storage.get_history(limit=10),
+        "packs_opened": storage.count_packs_opened(),
     })
 
 

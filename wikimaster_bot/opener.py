@@ -5,6 +5,7 @@ modifier une fois qu'on a les vrais elements du DOM du site.
 """
 
 import re
+import time
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -34,21 +35,39 @@ class PackOpener:
             )
         return int(match.group(1))
 
-    def is_premium(self, page: Page) -> bool:
-        return page.locator(SELECTORS.premium_badge).count() > 0
-
-    def open_one_pack(self, page: Page) -> str | None:
-        """Clique sur le bouton d'ouverture et renvoie le titre de la carte obtenue."""
+    def open_one_pack(self, page: Page) -> bool:
+        """Clique sur "Ouvrir" puis passe les cartes une a une jusqu'a revenir
+        a l'ecran principal. On ne lit pas le contenu des cartes obtenues.
+        """
         button = page.locator(SELECTORS.pack_open_button)
         if button.count() == 0 or not button.first.is_enabled():
-            return None
+            return False
         button.first.click()
-        result = page.locator(SELECTORS.pack_open_result_card)
-        result.first.wait_for(state="visible", timeout=15_000)
-        title = result.first.inner_text().strip()
-        storage.append_drop(title)
-        storage.append_log(f"Paquet ouvert -> {title}")
-        return title
+        self._skip_through_reveal(page)
+        storage.append_log("Paquet ouvert (cartes passees).")
+        return True
+
+    def _skip_through_reveal(self, page: Page, timeout_seconds: float = 60.0) -> None:
+        """Clique sur le bouton "suivant" tant que le reveal de cartes est actif."""
+        skip_button = page.locator(SELECTORS.pack_skip_button)
+        open_button = page.locator(SELECTORS.pack_open_button)
+
+        skip_button.first.wait_for(state="visible", timeout=10_000)
+
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            if open_button.count() > 0 and open_button.first.is_visible():
+                return
+            if skip_button.count() == 0:
+                return
+            if skip_button.first.is_enabled():
+                skip_button.first.click()
+            page.wait_for_timeout(300)
+
+        storage.append_log(
+            "Timeout en passant les cartes du paquet : le reveal ne s'est pas termine "
+            "dans le delai attendu, verifier pack_skip_button / pack_open_button."
+        )
 
     def run_once(self) -> None:
         """Une passe : lit le stock courant et applique la strategie choisie."""
@@ -72,8 +91,8 @@ class PackOpener:
                     to_open = stock
 
                 for _ in range(to_open):
-                    title = self.open_one_pack(page)
-                    if title is None:
+                    opened = self.open_one_pack(page)
+                    if not opened:
                         break
             finally:
                 context.close()

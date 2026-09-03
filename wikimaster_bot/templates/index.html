@@ -69,15 +69,8 @@
   </section>
 
   <section>
-    <h2>Historique des ouvertures</h2>
-    <table>
-      <tr><th>Date</th><th>Carte</th></tr>
-      {% for entry in history %}
-      <tr><td>{{ entry.opened_at }}</td><td>{{ entry.title }}</td></tr>
-      {% else %}
-      <tr><td colspan="2">Aucune ouverture pour le moment.</td></tr>
-      {% endfor %}
-    </table>
+    <h2>Activite</h2>
+    <p>Paquets ouverts (session courante) : <strong>{{ packs_opened }}</strong></p>
   </section>
 
   <section>
