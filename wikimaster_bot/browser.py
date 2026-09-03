@@ -15,6 +15,12 @@ DATA_DIR = Path(__file__).parent / "data"
 PROFILE_DIR = DATA_DIR / "browser_profile"
 
 BASE_URL = "https://www.wiki-masters.com"
+# On navigue toujours via /login plutot que directement sur BASE_URL : si le
+# profil n'est pas encore connecte, l'utilisateur tombe sur le vrai formulaire
+# de connexion (pas /signup, vers lequel la racine du site redirige les
+# visiteurs non connectes). Si le profil est deja connecte, le site redirige
+# lui-meme /login vers la page d'accueil.
+LOGIN_URL = f"{BASE_URL}/login"
 
 
 def launch_context(playwright: Playwright, headless: bool) -> BrowserContext:

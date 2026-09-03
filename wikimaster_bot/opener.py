@@ -7,7 +7,7 @@ modifier une fois qu'on a les vrais elements du DOM du site.
 import re
 import time
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError, sync_playwright
 
 from . import browser, storage
 from .config import Config
@@ -25,8 +25,18 @@ class PackOpener:
         colles, ex. "10 / 10" -> 1010) : on capture uniquement le nombre
         qui precede le "/".
         """
-        page.goto(browser.BASE_URL)
-        text = page.locator(SELECTORS.pack_stock_count).inner_text()
+        page.goto(browser.LOGIN_URL)
+        stock_locator = page.locator(SELECTORS.pack_stock_count)
+        try:
+            stock_locator.first.wait_for(state="visible", timeout=15_000)
+        except PlaywrightTimeoutError as exc:
+            raise RuntimeError(
+                "Le compteur de paquets n'apparait pas sur la page apres 15s. "
+                "Le compte est probablement pas connecte dans le profil du bot : "
+                "decoche 'Navigateur invisible' et connecte-toi manuellement une fois, "
+                "ou le selecteur pack_stock_count a change."
+            ) from exc
+        text = stock_locator.first.inner_text()
         match = re.search(r"(\d+)\s*/", text)
         if not match:
             raise RuntimeError(
