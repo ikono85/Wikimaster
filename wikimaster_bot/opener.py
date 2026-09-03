@@ -4,6 +4,8 @@ Tous les selecteurs viennent de selectors.py -- c'est le seul fichier a
 modifier une fois qu'on a les vrais elements du DOM du site.
 """
 
+import re
+
 from playwright.sync_api import Page, sync_playwright
 
 from . import browser, storage
@@ -16,9 +18,21 @@ class PackOpener:
         self.config = config
 
     def read_stock(self, page: Page) -> int:
+        """Lit le texte du bloc "X / Y paquets disponibles" et renvoie X.
+
+        On evite de concatener tous les chiffres du texte (X et Y seraient
+        colles, ex. "10 / 10" -> 1010) : on capture uniquement le nombre
+        qui precede le "/".
+        """
         page.goto(browser.BASE_URL)
         text = page.locator(SELECTORS.pack_stock_count).inner_text()
-        return int("".join(ch for ch in text if ch.isdigit()) or 0)
+        match = re.search(r"(\d+)\s*/", text)
+        if not match:
+            raise RuntimeError(
+                f"Impossible de lire le stock de paquets dans le texte: {text!r}. "
+                "Le selecteur pack_stock_count ou le format d'affichage a peut-etre change."
+            )
+        return int(match.group(1))
 
     def is_premium(self, page: Page) -> bool:
         return page.locator(SELECTORS.premium_badge).count() > 0

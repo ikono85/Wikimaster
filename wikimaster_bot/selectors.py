@@ -21,13 +21,18 @@ class Selectors:
     login_submit_button: str = "#login-submit"
 
     # Page / widget d'ouverture de paquets
-    pack_stock_count: str = "[data-testid='pack-stock-count']"
-    pack_open_button: str = "[data-testid='open-pack-button']"
-    pack_open_result_card: str = "[data-testid='pack-result-card']"
-    pack_next_drop_timer: str = "[data-testid='next-drop-timer']"
+    # Le bouton n'a pas d'id/data-testid stable : on le cible via l'image qu'il contient,
+    # dont l'attribut alt est fiable ("Ouvrir un paquet").
+    pack_open_button: str = 'button:has(img[alt="Ouvrir un paquet"])'
+    # Conteneur affichant "X / Y paquets disponibles". On lit le texte complet et on
+    # extrait le nombre courant par regex plutot que de cibler un span precis (classes
+    # Tailwind dynamiques type text-[var(--color-accent)], fragiles a matcher en CSS).
+    pack_stock_count: str = ".card-frame"
+    pack_open_result_card: str = "[data-testid='pack-result-card']"  # TODO: a fournir
+    pack_next_drop_timer: str = "[data-testid='next-drop-timer']"  # TODO: a fournir
 
     # Statut premium du compte
-    premium_badge: str = "[data-testid='premium-badge']"
+    premium_badge: str = "[data-testid='premium-badge']"  # TODO: a fournir
 
 
 SELECTORS = Selectors()
