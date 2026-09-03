@@ -9,7 +9,7 @@ connexion separee a gerer dans l'app.
 
 from pathlib import Path
 
-from playwright.sync_api import BrowserContext, Playwright
+from playwright.sync_api import BrowserContext, Playwright, sync_playwright
 
 DATA_DIR = Path(__file__).parent / "data"
 PROFILE_DIR = DATA_DIR / "browser_profile"
@@ -29,3 +29,24 @@ def launch_context(playwright: Playwright, headless: bool) -> BrowserContext:
         user_data_dir=str(PROFILE_DIR),
         headless=headless,
     )
+
+
+def open_profile_for_manual_login() -> None:
+    """Ouvre une fenetre sur /login avec le profil persistant du bot et bloque
+    jusqu'a ce que l'utilisateur ferme cette fenetre lui-meme.
+
+    A appeler depuis un thread separe de l'UI (c'est bloquant). Contrairement
+    a launch_context (utilise par le bot pour une verification rapide puis
+    fermee), cette fenetre reste ouverte le temps que l'utilisateur se
+    connecte manuellement ; les cookies restent dans le profil pour les
+    lancements suivants du bot.
+    """
+    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as p:
+        context = p.chromium.launch_persistent_context(
+            user_data_dir=str(PROFILE_DIR),
+            headless=False,
+        )
+        page = context.pages[0] if context.pages else context.new_page()
+        page.goto(LOGIN_URL)
+        page.wait_for_event("close", timeout=0)

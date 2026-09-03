@@ -5,7 +5,7 @@ Lancement : python -m wikimaster_bot.gui
 
 import sys
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
@@ -23,9 +24,24 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from . import storage
+from . import browser, storage
 from .config import STRATEGIES, load_config, save_config
 from .scheduler import scheduler
+
+
+class ManualLoginWorker(QThread):
+    """Ouvre une fenetre de navigateur separee pour la connexion manuelle et
+    tourne jusqu'a ce que l'utilisateur la ferme lui-meme."""
+
+    finished_ok = Signal()
+    failed = Signal(str)
+
+    def run(self) -> None:
+        try:
+            browser.open_profile_for_manual_login()
+            self.finished_ok.emit()
+        except Exception as exc:  # noqa: BLE001 - remonte a l'UI
+            self.failed.emit(str(exc))
 
 
 class MainWindow(QMainWindow):
@@ -35,6 +51,7 @@ class MainWindow(QMainWindow):
         self.setMinimumWidth(480)
 
         self.cfg = load_config()
+        self._login_worker: ManualLoginWorker | None = None
 
         root = QWidget()
         layout = QVBoxLayout(root)
@@ -68,6 +85,10 @@ class MainWindow(QMainWindow):
         self.bot_status_label = QLabel()
         row.addWidget(self.bot_status_label)
         row.addStretch()
+
+        self.login_button = QPushButton("Se connecter (ouvrir le navigateur)")
+        self.login_button.clicked.connect(self.on_login_clicked)
+        row.addWidget(self.login_button)
 
         self.start_button = QPushButton("Demarrer")
         self.start_button.clicked.connect(self.on_start_clicked)
@@ -153,6 +174,12 @@ class MainWindow(QMainWindow):
         storage.append_log("Reglages mis a jour.")
 
     def on_start_clicked(self) -> None:
+        if self._login_worker is not None and self._login_worker.isRunning():
+            QMessageBox.warning(
+                self, "Connexion en cours",
+                "Ferme d'abord la fenetre de connexion avant de demarrer le bot.",
+            )
+            return
         self.on_save_settings()
         self.cfg.bot_enabled = True
         save_config(self.cfg)
@@ -163,13 +190,43 @@ class MainWindow(QMainWindow):
         save_config(self.cfg)
         scheduler.stop()
 
+    def on_login_clicked(self) -> None:
+        if scheduler.running:
+            QMessageBox.warning(
+                self, "Bot en cours",
+                "Arrete d'abord le bot avant d'ouvrir une fenetre de connexion.",
+            )
+            return
+        self.login_button.setEnabled(False)
+        self.login_button.setText("Fenetre ouverte — connecte-toi puis ferme-la")
+        storage.append_log("Ouverture du navigateur pour connexion manuelle...")
+
+        worker = ManualLoginWorker(self)
+        self._login_worker = worker
+        worker.finished_ok.connect(self._on_login_finished)
+        worker.failed.connect(self._on_login_failed)
+        worker.start()
+
+    def _on_login_finished(self) -> None:
+        storage.append_log("Fenetre de connexion fermee.")
+        self.login_button.setEnabled(True)
+        self.login_button.setText("Se connecter (ouvrir le navigateur)")
+
+    def _on_login_failed(self, message: str) -> None:
+        storage.append_log(f"Erreur pendant la connexion manuelle: {message}")
+        QMessageBox.critical(self, "Erreur", message)
+        self.login_button.setEnabled(True)
+        self.login_button.setText("Se connecter (ouvrir le navigateur)")
+
     # -- rafraichissement --------------------------------------------------------
 
     def refresh_status(self) -> None:
         running = scheduler.running
+        login_running = self._login_worker is not None and self._login_worker.isRunning()
         self.bot_status_label.setText("Bot : en cours" if running else "Bot : arrete")
-        self.start_button.setEnabled(not running)
+        self.start_button.setEnabled(not running and not login_running)
         self.stop_button.setEnabled(running)
+        self.login_button.setEnabled(not running and not login_running)
 
         self.packs_opened_label.setText(f"Paquets ouverts : {storage.count_packs_opened()}")
         self.log_view.setPlainText("\n".join(reversed(storage.get_recent_logs(limit=200))))

@@ -27,11 +27,13 @@ playwright install chromium
 ## Connexion
 
 Le bot utilise un profil de navigateur persistant (`data/browser_profile/`,
-ignore par git) : pas de gestion de login dans l'app. Si le compte n'est pas
-deja connecte dans ce profil, decoche "Navigateur invisible" dans les reglages
-et connecte-toi manuellement une fois dans la fenetre qui s'ouvre au premier
-lancement du bot — les cookies restent ensuite dans le profil pour les fois
-suivantes, exactement comme un navigateur normal.
+ignore par git). Avant le tout premier lancement (ou si la session expire),
+clique sur **"Se connecter (ouvrir le navigateur)"** : une fenetre separee
+s'ouvre sur `/login` et reste ouverte tant que tu ne la fermes pas toi-meme.
+Connecte-toi manuellement, puis ferme la fenetre — les cookies restent dans
+le profil pour les lancements suivants du bot, exactement comme un navigateur
+normal. Ce bouton est desactive pendant que le bot tourne (les deux ne
+peuvent pas utiliser le meme profil en meme temps).
 
 ## Lancer l'application
 
